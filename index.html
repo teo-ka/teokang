@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>팀 점심 메뉴 룰렛</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 600px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        h1 {
+            font-size: 28px;
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .wheel-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            aspect-ratio: 1;
+            margin-bottom: 30px;
+        }
+        
+        .wheel {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 4px solid #ddd;
+            position: relative;
+            overflow: hidden;
+            transition: transform 3s cubic-bezier(0.2, 0.8, 0.3, 1);
+        }
+        
+        .wheel-section {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 50%;
+            height: 50%;
+            transform-origin: 0% 100%;
+        }
+        
+        .wheel-section:nth-child(odd) {
+            background-color: #FFF7ED;
+        }
+        
+        .wheel-section:nth-child(even) {
+            background-color: #F59E0B;
+        }
+        
+        .section-text {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%) rotate(90deg);
+            text-align: center;
+            width: 24px;
+            font-size: 10px;
+            font-weight: 500;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: #333;
+        }
+        
+        .wheel-pointer {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            width: 0;
+            height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-top: 20px solid #dc2626;
+        }
+        
+        .spin-button {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #ef4444;
+            color: white;
+            font-weight: bold;
+            border: none;
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            cursor: pointer;
+            font-size: 14px;
+            z-index: 5;
+            transition: background-color 0.2s;
+        }
+        
+        .spin-button:hover {
+            background-color: #dc2626;
+        }
+        
+        .spin-button:disabled {
+            background-color: #f87171;
+            cursor: not-allowed;
+        }
+        
+        .result-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 100%;
+            max-width: 400px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s, transform 0.5s;
+        }
+        
+        .result-container.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .result-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .result-restaurant {
+            font-size: 24px;
+            font-weight: bold;
+            color: #f59e0b;
+            margin-bottom: 5px;
+        }
+        
+        .result-menu {
+            color: #666;
+            margin-bottom: 15px;
+        }
+        
+        .map-link {
+            display: inline-block;
+            background-color: #3b82f6;
+            color: white;
+            font-weight: 600;
+            padding: 10px 15px;
+            border-radius: 5px;
+            text-decoration: none;
+            transition: background-color 0.2s;
+        }
+        
+        .map-link:hover {
+            background-color: #2563eb;
+        }
+        
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            animation: fall linear forwards;
+        }
+        
+        @keyframes fall {
+            to {
+                transform: translateY(100vh);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>오늘의 점심 메뉴는?</h1>
+        
+        <div class="wheel-container">
+            <div class="wheel" id="wheel">
+                <!-- 식당 섹션은 JavaScript로 추가됩니다 -->
+            </div>
+            
+            <div class="wheel-pointer"></div>
+            
+            <button id="spinButton" class="spin-button">룰렛 돌리기</button>
+        </div>
+        
+        <div class="result-container" id="resultContainer">
+            <h2 class="result-title">🎉 당첨! 🎉</h2>
+            <p class="result-restaurant" id="resultRestaurant"></p>
+            <p class="result-menu" id="resultMenu"></p>
+            <a id="resultLink" href="#" target="_blank" class="map-link">네이버 지도에서 보기</a>
+        </div>
+    </div>
+
+    <script>
+        // 식당 데이터
+        const restaurants = [
+            { name: '수하동', menu: '곰탕, 설렁탕', url: 'https://naver.me/5D8t6gvf' },
+            { name: '평가옥', menu: '온반, 평양냉면', url: 'https://naver.me/FHl0HlCR' },
+            { name: '반룡산', menu: '이북음식', url: 'https://naver.me/GYC9NZNC' },
+            { name: '피양콩 할머니', menu: '콩비지, 콩국수', url: 'https://naver.me/5Rh0ttMw' },
+            { name: '마담밍', menu: '중식당', url: 'https://naver.me/IxsqViHd' },
+            { name: '잇쇼우', menu: '우동, 소바', url: 'https://naver.me/FLyTJ4dC' },
+            { name: '판동면옥', menu: '갈비탕, 평양냉면', url: 'https://naver.me/5oE54w2E' },
+            { name: '모리향', menu: '중식당', url: 'https://naver.me/5nerNoYF' },
+            { name: '빠완', menu: '중식당', url: 'https://naver.me/xIeXPL79' },
+            { name: '청국장서갈비', menu: '찌개, 전골', url: 'https://naver.me/F0z2PxPr' },
+            { name: '우밀가', menu: '안동국시, 평양냉면', url: 'https://naver.me/Fuz5Kk3N' },
+            { name: '라피자노스트라', menu: '이탈리아음식', url: 'https://naver.me/GipBz9fK' },
+            { name: '알로이타이', menu: '태국음식', url: 'https://naver.me/Fio7Nz9n' },
+            { name: '카발', menu: '이탈리아음식', url: 'https://naver.me/GL8iswVA' },
+            { name: '미트앤번버거샵', menu: '수제버거', url: 'https://naver.me/Fk733Xjx' },
+            { name: '강남장수미역', menu: '미역국', url: 'https://naver.me/5OQyigVX' }
+        ];
+
+        // 전역 변수
+        let rotation = 0;
+        let spinning = false;
+        
+        // DOM 요소
+        const wheel = document.getElementById('wheel');
+        const spinButton = document.getElementById('spinButton');
+        const resultContainer = document.getElementById('resultContainer');
+        const resultRestaurant = document.getElementById('resultRestaurant');
+        const resultMenu = document.getElementById('resultMenu');
+        const resultLink = document.getElementById('resultLink');
+        
+        // 룰렛 섹션 생성
+        function createWheelSections() {
+            const angle = 360 / restaurants.length;
+            
+            restaurants.forEach((restaurant, index) => {
+                const section = document.createElement('div');
+                section.className = 'wheel-section';
+                
+                // 회전 각도와 기울기 계산
+                const rotate = index * angle;
+                const skew = 90 - angle;
+                
+                section.style.transform = `rotate(${rotate}deg) skewY(${skew}deg)`;
+                
+                // 섹션 텍스트 추가
+                const text = document.createElement('div');
+                text.className = 'section-text';
+                text.textContent = restaurant.name;
+                text.style.transform = `skewY(${-skew}deg) rotate(${angle/2}deg) translateY(-20px)`;
+                
+                section.appendChild(text);
+                wheel.appendChild(section);
+            });
+        }
+        
+        // 룰렛 돌리기
+        function spinWheel() {
+            if (spinning) return;
+            
+            spinning = true;
+            spinButton.disabled = true;
+            spinButton.textContent = '돌리는 중...';
+            resultContainer.classList.remove('show');
+            
+            // 랜덤 회전 (3-5회전 + 무작위 각도)
+            const spinCount = 3 + Math.random() * 2;
+            const newRotation = rotation + (spinCount * 360);
+            rotation = newRotation;
+            
+            wheel.style.transform = `rotate(${rotation}deg)`;
+            
+            // 결과 계산 및 표시
+            setTimeout(() => {
+                const normalizedRotation = rotation % 360;
+                const sectionAngle = 360 / restaurants.length;
+                const restaurantIndex = Math.floor((360 - normalizedRotation) / sectionAngle) % restaurants.length;
+                const selectedRestaurant = restaurants[restaurantIndex];
+                
+                // 결과 표시
+                resultRestaurant.textContent = selectedRestaurant.name;
+                resultMenu.textContent = selectedRestaurant.menu;
+                resultLink.href = selectedRestaurant.url;
+                resultContainer.classList.add('show');
+                
+                // 색종이 효과
+                createConfetti();
+                
+                // 상태 초기화
+                spinning = false;
+                spinButton.disabled = false;
+                spinButton.textContent = '룰렛 돌리기';
+            }, 3000); // 3초 후 결과 표시
+        }
+        
+        // 색종이 효과
+        function createConfetti() {
+            const container = document.querySelector('.container');
+            
+            for (let i = 0; i < 100; i++) {
+                const confetti = document.createElement('div');
+                confetti.classList.add('confetti');
+                
+                // 랜덤 위치, 크기, 색상 설정
+                const x = Math.random() * 100;
+                confetti.style.left = x + '%';
+                confetti.style.top = '-10px';
+                confetti.style.width = (Math.random() * 5 + 5) + 'px';
+                confetti.style.height = (Math.random() * 5 + 5) + 'px';
+                confetti.style.backgroundColor = `hsl(${Math.random() * 360}, 80%, 60%)`;
+                
+                // 랜덤 애니메이션 속성
+                const duration = Math.random() * 2 + 2; // 2-4초
+                confetti.style.animationDuration = duration + 's';
+                
+                container.appendChild(confetti);
+                
+                // 애니메이션 종료 후 제거
+                setTimeout(() => {
+                    confetti.remove();
+                }, duration * 1000);
+            }
+        }
+        
+        // 이벤트 리스너
+        spinButton.addEventListener('click', spinWheel);
+        
+        // 초기화
+        createWheelSections();
+    </script>
+</body>
+</html>
